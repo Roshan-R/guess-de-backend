@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 fastapi = "^0.114.2"
 yt-dlp = "^2024.8.6"
+uvicorn = "^0.30.6"
 
 
 [build-system]
