@@ -2,9 +2,12 @@ from fastapi import FastAPI
 from yt_dlp import YoutubeDL
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from requests_html import HTMLSession
+from requests_html import HTML
 from fake_useragent import UserAgent
+from httpx import AsyncClient
 from random import choice
+import asyncio
+
 
 urls = []
 
@@ -47,19 +50,21 @@ app.add_middleware(
 )
 
 headers = {"User-Agent": UserAgent().firefox}
-session = HTMLSession()
+
+client = AsyncClient()
 
 
 @app.get("/getVideo")
-def give_video_info():
+async def give_video_info():
     ydl_opts = {
         "format": "m4a/bestaudio/best",
     }
     with YoutubeDL(ydl_opts) as ydl:
         url = choice(urls)
-        r = session.get(url)
-        title = r.html.find(".u-h2", first=True).text
-        info = ydl.extract_info(url, download=False)
+        response = await client.get(url, headers=headers)
+        html = HTML(html=response.text)
+        title = html.find(".u-h2", first=True).text
+        info = await asyncio.to_thread(ydl.extract_info, url, download=False)
         if info:
             return info["url"], title
         else:
