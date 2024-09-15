@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from yt_dlp import YoutubeDL
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
+from requests_html import HTMLSession
+from fake_useragent import UserAgent
 from random import choice
 
 urls = []
@@ -17,7 +18,9 @@ async def lifespan(app: FastAPI):
         "quiet": True,
     }
 
-    playlist_url = "https://music.youtube.com/watch?v=nYEoxne_20Y&list=RDCLAK5uy_m8-hn_Dh2IINzL4vpN_vnafTZflvH30pM"
+    playlist_url = (
+        "https://www.jiosaavn.com/featured/weekend-sadhya/Kl3SldGMVC5uOxiEGmm6lQ__"
+    )
 
     with YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(playlist_url, download=False)
@@ -43,6 +46,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+headers = {"User-Agent": UserAgent().firefox}
+session = HTMLSession()
+
 
 @app.get("/getVideo")
 def give_video_info():
@@ -50,8 +56,11 @@ def give_video_info():
         "format": "m4a/bestaudio/best",
     }
     with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(choice(urls), download=False)
+        url = choice(urls)
+        r = session.get(url)
+        title = r.html.find(".u-h2", first=True).text
+        info = ydl.extract_info(url, download=False)
         if info:
-            return info["url"], info["title"]
+            return info["url"], title
         else:
             return None
