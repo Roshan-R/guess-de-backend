@@ -35,11 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = [
-    "http://localhost:5173",
-    "http://192.168.1.8:5173/",
-    "https://a29c-103-203-73-78.ngrok-free.app/",
-]
+origins = ["http://localhost:5173", "https://guess-de-frontend.onrender.com/"]
 
 app.add_middleware(
     CORSMiddleware,
