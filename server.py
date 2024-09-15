@@ -60,8 +60,13 @@ async def give_video_info():
         response = await client.get(url, headers=headers)
         html = HTML(html=response.text)
         title = html.find(".u-h2", first=True).text
+        image = html.find("img", first=True).attrs["src"]
+        song_screen_text = html.find(
+            'figcaption p:first-of-type [screen_name="song_screen"]', first=True
+        ).attrs["title"]
+
         info = await asyncio.to_thread(ydl.extract_info, url, download=False)
         if info:
-            return info["url"], title
+            return info["url"], title, image, song_screen_text
         else:
             return None
