@@ -7,9 +7,7 @@ from fake_useragent import UserAgent
 from httpx import AsyncClient
 from random import choice
 import asyncio
-
-
-urls = []
+from uuid import uuid4
 
 
 @asynccontextmanager
@@ -34,9 +32,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
 origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -45,28 +41,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-headers = {"User-Agent": UserAgent().firefox}
 
+headers = {"User-Agent": UserAgent().firefox}
 client = AsyncClient()
+client_map: dict[str, list[str]] = {}
+urls = []
+
+
+@app.get("/terminateClient")
+async def terminate(client_id: str):
+    del client_map[client_id]
 
 
 @app.get("/getVideo")
-async def give_video_info():
+async def give_video_info(client_id: str | None = None):
+    if client_id:
+        if len(client_map[client_id]) == len(urls):
+            blacklist = []
+            client_map[client_id] = []
+        else:
+            blacklist = client_map[client_id]
+
+        url = choice(list(set(urls).difference(blacklist)))
+    else:
+        client_id = uuid4().__str__()
+        url = choice(urls)
+
     ydl_opts = {
         "format": "m4a/bestaudio/best",
     }
+
     with YoutubeDL(ydl_opts) as ydl:
-        url = choice(urls)
         response = await client.get(url, headers=headers)
         html = HTML(html=response.text)
-        title = html.find(".u-h2", first=True).text
-        image = html.find("img", first=True).attrs["src"]
+        title = html.find(".u-h2", first=True).text  # type: ignore
+        image = html.find("img", first=True).attrs["src"]  # type: ignore
         song_screen_text = html.find(
             'figcaption p:first-of-type [screen_name="song_screen"]', first=True
-        ).attrs["title"]
+        ).attrs["title"]  # type: ignore
 
+        client_map.setdefault(client_id, []).append(url)
         info = await asyncio.to_thread(ydl.extract_info, url, download=False)
-        if info:
-            return info["url"], title, image, song_screen_text
-        else:
-            return None
+        return info["url"], title, image, song_screen_text, client_id  # type: ignore
